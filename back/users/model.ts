@@ -5,7 +5,7 @@ export const config = {
 }
 
 export type User = {
-  tgId: bigint;
+  tgId: number;
   // TODO: auth stuff
   numberOfClicks: number;
   lastClickTimestamp: Date;
