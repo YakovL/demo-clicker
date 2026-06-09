@@ -19,27 +19,21 @@ type RepositoryError =
   | 'connection_problem'
   | 'database_error';
 
-type FindUserResultSuccess = {
-  user: User | null;
-  error: null;
-};
-
-type FindUserResultError = {
+type UserResultError = {
   user: null;
   error: RepositoryError;
   originalError: any;
 };
 
-type FindUserResult = FindUserResultSuccess | FindUserResultError;
+type FindUserResult = {
+  user: User | null;
+  error: null;
+} | UserResultError;
 
 type CreateUserResult = {
   user: User;
   error: null;
-} | {
-  user: null;
-  error: RepositoryError;
-  originalError: any;
-};
+} | UserResultError;
 
 
 let client: MongoClient | null = null;
@@ -65,7 +59,7 @@ async function connectToDatabase(): Promise<{ error: any }> {
 }
 
 export const usersRepository = {
-  async findUser(tgId: number): Promise<FindUserResult> {
+  async findById(tgId: number): Promise<FindUserResult> {
     const { error: connectionError } = await connectToDatabase();
     if (connectionError) {
       return {
@@ -98,7 +92,7 @@ export const usersRepository = {
     }
   },
 
-  async createUser(tgId: number): Promise<CreateUserResult> {
+  async create(tgId: number): Promise<CreateUserResult> {
     const { error: connectionError } = await connectToDatabase();
     if (connectionError) {
       return {
