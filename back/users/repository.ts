@@ -14,12 +14,13 @@ const mongoConnectUrl: string = MONGODB_CONNECT_URL;
 const dbName = 'main'
 const userCollectionName = 'users'
 
-const sorterWithTieBreaker = { numberOfClicks: -1, _id: 1 };
+const sorterWithTieBreaker = { numberOfClicks: -1, _id: 1 } as const;
 
 
-type RepositoryError = 
+type RepositoryError =
   | 'connection_problem'
-  | 'database_error';
+  | 'database_error'
+  | 'constraint_issue';
 
 type UserResultError = {
   user: null;
@@ -49,6 +50,17 @@ type GetRankResult = ({
   error: null;
 } | {
   rank: null;
+  error: RepositoryError;
+  originalError: any;
+};
+
+type LeaderboardUser = User & { rank: number };
+
+type GetLeaderboardResult = {
+  leaderboard: LeaderboardUser[];
+  error: null;
+} | {
+  leaderboard: null;
   error: RepositoryError;
   originalError: any;
 };
@@ -303,6 +315,72 @@ export const usersRepository = {
     } catch (error) {
       return {
         rank: null,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  },
+
+  async getLeaderboard(tgId: number): Promise<GetLeaderboardResult> {
+    const { error: connectionError } = await connectToDatabase();
+    if (connectionError) {
+      return {
+        leaderboard: null,
+        error: 'connection_problem',
+        originalError: connectionError
+      };
+    }
+    if (!usersCollection) {
+      return {
+        leaderboard: null,
+        error: 'connection_problem',
+        originalError: 'usersCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const leaderboard = await usersCollection
+        .find()
+        .sort(sorterWithTieBreaker)
+        .limit(config.leaderboardSize)
+        .toArray();
+
+      const leaderboardWithRanks: LeaderboardUser[] = leaderboard.map((user, index) => ({
+        ...user,
+        rank: index + 1
+      }));
+
+      const isUserInLeaderboard = leaderboard.some(u => u.tgId === tgId);
+
+      if (!isUserInLeaderboard) {
+        const rankResult = await this.getRank(tgId);
+        if (rankResult.error) {
+          return {
+            leaderboard: null,
+            error: rankResult.error,
+            originalError: rankResult.originalError
+          };
+        }
+        if (rankResult.rank === null) {
+          return {
+            leaderboard: null,
+            error: 'constraint_issue',
+            originalError: 'user not found, must be a bug'
+          };
+        }
+        leaderboardWithRanks.push({
+          ...rankResult.user,
+          rank: rankResult.rank
+        });
+      }
+
+      return {
+        leaderboard: leaderboardWithRanks,
+        error: null
+      };
+    } catch (error) {
+      return {
+        leaderboard: null,
         error: 'database_error',
         originalError: error
       };
