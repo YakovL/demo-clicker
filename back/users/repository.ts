@@ -240,6 +240,23 @@ export const usersRepository = {
   }
 };
 
+export async function ensureIndexes(): Promise<{ error: null | unknown }> {
+  try {
+    const { error: connectionError } = await connectToDatabase();
+    if (connectionError) {
+      throw connectionError;
+    }
+    if (!usersCollection) {
+      throw new Error('usersCollection is falsy, must be a bug');
+    }
+
+    await usersCollection.createIndex({ tgId: 1 }, { unique: true });
+    return { error: null };
+  } catch (error: unknown) {
+    return { error };
+  }
+}
+
 export async function closeConnection(): Promise<void> {
   if (client) {
     await client.close();
