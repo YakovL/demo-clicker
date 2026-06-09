@@ -14,6 +14,8 @@ const mongoConnectUrl: string = MONGODB_CONNECT_URL;
 const dbName = 'main'
 const userCollectionName = 'users'
 
+const sorterWithTieBreaker = { numberOfClicks: -1, _id: 1 };
+
 
 type RepositoryError = 
   | 'connection_problem'
@@ -37,8 +39,13 @@ type CreateUserResult = {
 
 type AddLegitimateClicksResult = FindUserResult;
 
-type GetRankResult = {
-  rank: number | null;
+type GetRankResult = ({
+  rank: number;
+  user: User;
+} | {
+  rank: null;
+  user: null;
+}) & {
   error: null;
 } | {
   rank: null;
@@ -271,10 +278,12 @@ export const usersRepository = {
       if (!user) {
         return {
           rank: null,
+          user: null,
           error: null
         };
       }
 
+      // not using sorterWithTieBreaker directly for better performance
       const count = await usersCollection.countDocuments({
         $or: [
           { numberOfClicks: { $gt: user.numberOfClicks } },
@@ -288,6 +297,7 @@ export const usersRepository = {
 
       return {
         rank,
+        user,
         error: null
       };
     } catch (error) {
@@ -311,7 +321,7 @@ export async function ensureIndexes(): Promise<{ error: null | unknown }> {
     }
 
     await usersCollection.createIndex({ tgId: 1 }, { unique: true });
-    await usersCollection.createIndex({ numberOfClicks: -1, _id: 1 });
+    await usersCollection.createIndex(sorterWithTieBreaker);
     return { error: null };
   } catch (error: unknown) {
     return { error };
