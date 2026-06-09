@@ -6,6 +6,7 @@ export const config = {
 
 export type User = {
   tgId: number;
+  title: string;
   // TODO: auth stuff
   numberOfClicks: number;
   lastClickTimestamp: Date;

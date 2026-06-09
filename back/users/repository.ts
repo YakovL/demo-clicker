@@ -94,7 +94,7 @@ export const usersRepository = {
     }
   },
 
-  async create(tgId: number): Promise<CreateUserResult> {
+  async create(tgId: number, title: string): Promise<CreateUserResult> {
     const { error: connectionError } = await connectToDatabase();
     if (connectionError) {
       return {
@@ -114,6 +114,7 @@ export const usersRepository = {
     try {
       const newUser: User = {
         tgId,
+        title,
         numberOfClicks: 0,
         lastClickEnergy: config.maxEnergy,
         lastClickTimestamp: new Date()
