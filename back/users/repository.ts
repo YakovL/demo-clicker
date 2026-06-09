@@ -37,6 +37,15 @@ type CreateUserResult = {
 
 type AddLegitimateClicksResult = FindUserResult;
 
+type GetRankResult = {
+  rank: number | null;
+  error: null;
+} | {
+  rank: null;
+  error: RepositoryError;
+  originalError: any;
+};
+
 
 let client: MongoClient | null = null;
 let db: Db | null = null;
@@ -237,6 +246,57 @@ export const usersRepository = {
         originalError: error
       };
     }
+  },
+
+  // currently using _id as a tie-breaker
+  async getRank(tgId: number): Promise<GetRankResult> {
+    const { error: connectionError } = await connectToDatabase();
+    if (connectionError) {
+      return {
+        rank: null,
+        error: 'connection_problem',
+        originalError: connectionError
+      };
+    }
+    if (!usersCollection) {
+      return {
+        rank: null,
+        error: 'connection_problem',
+        originalError: 'usersCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const user = await usersCollection.findOne({ tgId }, { projection: { numberOfClicks: 1, _id: 1 } });
+      if (!user) {
+        return {
+          rank: null,
+          error: null
+        };
+      }
+
+      const count = await usersCollection.countDocuments({
+        $or: [
+          { numberOfClicks: { $gt: user.numberOfClicks } },
+          {
+            numberOfClicks: user.numberOfClicks,
+            _id: { $lt: user._id }
+          }
+        ]
+      });
+      const rank = count + 1;
+
+      return {
+        rank,
+        error: null
+      };
+    } catch (error) {
+      return {
+        rank: null,
+        error: 'database_error',
+        originalError: error
+      };
+    }
   }
 };
 
@@ -251,6 +311,7 @@ export async function ensureIndexes(): Promise<{ error: null | unknown }> {
     }
 
     await usersCollection.createIndex({ tgId: 1 }, { unique: true });
+    await usersCollection.createIndex({ numberOfClicks: -1, _id: 1 });
     return { error: null };
   } catch (error: unknown) {
     return { error };
