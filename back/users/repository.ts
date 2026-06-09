@@ -1,6 +1,7 @@
 import { MongoClient, Db, Collection } from 'mongodb';
 import dotenv from 'dotenv';
 import type { User } from './model';
+import { config } from './model';
 
 dotenv.config();
 
@@ -30,6 +31,15 @@ type FindUserResultError = {
 };
 
 type FindUserResult = FindUserResultSuccess | FindUserResultError;
+
+type CreateUserResult = {
+  user: User;
+  error: null;
+} | {
+  user: null;
+  error: RepositoryError;
+  originalError: any;
+};
 
 
 let client: MongoClient | null = null;
@@ -77,6 +87,46 @@ export const usersRepository = {
 
       return {
         user: user || null,
+        error: null
+      };
+    } catch (error) {
+      return {
+        user: null,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  },
+
+  async createUser(tgId: number): Promise<CreateUserResult> {
+    const { error: connectionError } = await connectToDatabase();
+    if (connectionError) {
+      return {
+        user: null,
+        error: 'connection_problem',
+        originalError: connectionError
+      };
+    }
+    if (!usersCollection) {
+      return {
+        user: null,
+        error: 'connection_problem',
+        originalError: 'usersCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const newUser: User = {
+        tgId,
+        numberOfClicks: 0,
+        lastClickEnergy: config.maxEnergy,
+        lastClickTimestamp: new Date()
+      };
+
+      await usersCollection.insertOne(newUser);
+
+      return {
+        user: newUser,
         error: null
       };
     } catch (error) {
