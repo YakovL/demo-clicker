@@ -35,6 +35,8 @@ type CreateUserResult = {
   error: null;
 } | UserResultError;
 
+type AddLegitimateClicksResult = FindUserResult;
+
 
 let client: MongoClient | null = null;
 let db: Db | null = null;
@@ -121,6 +123,110 @@ export const usersRepository = {
 
       return {
         user: newUser,
+        error: null
+      };
+    } catch (error) {
+      return {
+        user: null,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  },
+
+  async addLegitimateClicks(tgId: number, claimedClicksCount: number): Promise<AddLegitimateClicksResult> {
+    const { error: connectionError } = await connectToDatabase();
+    if (connectionError) {
+      return {
+        user: null,
+        error: 'connection_problem',
+        originalError: connectionError
+      };
+    }
+    if (!usersCollection) {
+      return {
+        user: null,
+        error: 'connection_problem',
+        originalError: 'usersCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const serverNow = new Date();
+
+      const result = await usersCollection.findOneAndUpdate(
+        { tgId },
+        [
+          // currentEnergy = min(lastClickEnergy + (serverNow - lastClickAt) * energyRegenPerMinute, maxEnergy)
+          {
+            $set: {
+              currentEnergy: {
+                $min: [
+                  {
+                    $add: [
+                      '$lastClickEnergy',
+                      {
+                        $multiply: [
+                          {
+                            $divide: [
+                              { $subtract: [serverNow, '$lastClickTimestamp'] },
+                              60000
+                            ]
+                          },
+                          config.energyRegenPerMinute
+                        ]
+                      }
+                    ]
+                  },
+                  config.maxEnergy
+                ]
+              }
+            }
+          },
+          // ligitimateClicks = min(currentEnergy / clickEnergyCost, claimedClicksCount)
+          {
+            $set: {
+              legitimateClicks: {
+                $min: [
+                  {
+                    $floor: {
+                      $divide: ['$currentEnergy', config.clickEnergyCost]
+                    }
+                  },
+                  claimedClicksCount
+                ]
+              }
+            }
+          },
+          // newEnergy = currentEnergy - ligitimateClicks * clickEnergyCost
+          // also update clicks number and timestamp
+          {
+            $set: {
+              numberOfClicks: {
+                $add: ['$numberOfClicks', '$legitimateClicks']
+              },
+              lastClickTimestamp: serverNow,
+              lastClickEnergy: {
+                $subtract: [
+                  '$currentEnergy',
+                  { $multiply: ['$legitimateClicks', config.clickEnergyCost] }
+                ]
+              }
+            }
+          },
+          // cleanup temp fields
+          {
+            $project: {
+              currentEnergy: 0,
+              legitimateClicks: 0
+            }
+          }
+        ],
+        { returnDocument: 'after' }
+      );
+
+      return {
+        user: result || null,
         error: null
       };
     } catch (error) {
