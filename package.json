@@ -1,8 +1,12 @@
 {
 	"scripts": {
-  },
+		"dev": "tsx --watch back/app.ts",
+		"start": "tsx back/app.ts"
+	},
 	"dependencies": {
+		"@hono/node-server": "^2.0.4",
 		"dotenv": "^17.4.2",
+		"hono": "^4.12.25",
 		"mongodb": "^7.2.0",
 		"tsx": "^4.22.4"
 	},
