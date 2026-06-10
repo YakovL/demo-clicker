@@ -67,23 +67,34 @@ type GetLeaderboardResult = {
 
 
 let client: MongoClient | null = null;
+// tracking promise to avoid race on cold start
+let clientReadyPromise: Promise<MongoClient> | null = null;
 let db: Db | null = null;
 let usersCollection: Collection<User> | null = null;
 
 async function connectToDatabase(): Promise<{ error: any }> {
   if (client) return { error: null };
+  if (clientReadyPromise) {
+    await clientReadyPromise;
+    if (client) return { error: null };
+  }
 
   try {
-    client = new MongoClient(mongoConnectUrl, {
-    });
-    await client.connect();
-    db = client.db(dbName);
-    usersCollection = db.collection<User>(userCollectionName);
+    clientReadyPromise = (async () => {
+      client = new MongoClient(mongoConnectUrl, {
+      });
+      await client.connect();
+      db = client.db(dbName);
+      usersCollection = db.collection<User>(userCollectionName);
+      return client;
+    })();
+    await clientReadyPromise;
     return { error: null };
   } catch (error) {
     client = null;
     db = null;
     usersCollection = null;
+    clientReadyPromise = null;
     return { error };
   }
 }
