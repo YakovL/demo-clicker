@@ -4,6 +4,7 @@ export const config = {
   clickEnergyCost: 1,
 
   leaderboardSize: 25,
+  excessiveClicksTolerance: 1.5,
 }
 
 export type User = {

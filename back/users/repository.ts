@@ -28,17 +28,23 @@ type UserResultError = {
   originalError: any;
 };
 
-type FindUserResult = {
+type UserResultSuccess = {
   user: User | null;
   error: null;
-} | UserResultError;
+}
+
+type FindUserResult = UserResultSuccess | UserResultError;
 
 type CreateUserResult = {
   user: User;
   error: null;
 } | UserResultError;
 
-type AddLegitimateClicksResult = FindUserResult;
+type AddLegitimateClicksResult = UserResultSuccess | {
+  user: null;
+  error: RepositoryError | 'invalid_clicks_count';
+  originalError: any;
+};
 
 type GetRankResult = ({
   rank: number;
@@ -175,6 +181,17 @@ export const usersRepository = {
   },
 
   async addLegitimateClicks(tgId: number, claimedClicksCount: number): Promise<AddLegitimateClicksResult> {
+    if (claimedClicksCount < 0
+        || claimedClicksCount > config.maxEnergy / config.clickEnergyCost * config.excessiveClicksTolerance
+        || claimedClicksCount % 1 != 0
+    ) {
+      return {
+        user: null,
+        error: 'invalid_clicks_count',
+        originalError: 'claimedClicksCount must be between 0 and maxEnergy'
+      };
+    }
+
     const { error: connectionError } = await connectToDatabase();
     if (connectionError) {
       return {
