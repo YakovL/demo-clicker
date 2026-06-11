@@ -3,6 +3,7 @@ import './App.css'
 
 function App() {
   const [count, setCount] = useState(0)
+  const initData = (window as any).Telegram?.WebApp?.initData as string | undefined
 
   return (
     <>
