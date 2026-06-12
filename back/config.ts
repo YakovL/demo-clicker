@@ -28,6 +28,8 @@ export const env = {
   TELEGRAM_TMA_URL,
   MONGODB_CONNECT_URL,
   PORT,
+  jwtSecret: TELEGRAM_BOT_TOKEN,
+  jwtExpiresIn: '7d', // may want to make adjustable in the future
 } as const;
 
 export { gameConfig };

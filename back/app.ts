@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
+import jwt from 'jsonwebtoken';
 import { usersRepository } from './users/repository';
 import { env } from './config';
 import { validateWebAppData } from '@grammyjs/validator';
@@ -11,13 +12,16 @@ type Env = {
   };
 };
 
+type jwtDataShape = {
+  tgId: number;
+}
+
 const app = new Hono<Env>();
 
 app.use('*', cors());
 
-// Naive auth middleware - validates Telegram Mini App initData
-// TODO: add an endpoint for auth and issue a token instead (initData expires, etc)
-app.use('*', async (c, next) => {
+// POST /v1/auth/telegram - validates initData and issues JWT
+app.post('/v1/auth/telegram', async (c) => {
   const initData = c.req.header('X-Telegram-Init-Data');
   if (!initData) {
     return c.json({ error: 'missing_init_data' as const }, 401);
@@ -42,11 +46,42 @@ app.use('*', async (c, next) => {
     if (typeof tgId !== 'number') {
       return c.json({ error: 'invalid_user_id' }, 401);
     }
-    
-    c.set('tgId', tgId);
-    await next();
+
+    const data: jwtDataShape = { tgId };
+    const token = jwt.sign(data, env.jwtSecret, { expiresIn: env.jwtExpiresIn });
+    return c.json({ jwt: token });
   } catch {
     return c.json({ error: 'invalid_user_data' }, 401);
+  }
+});
+
+// Auth middleware - validates Bearer JWT token
+app.use('*', async (c, next) => {
+  // Skip auth for /v1/auth/* endpoints
+  if (c.req.path.startsWith('/v1/auth/')) {
+    await next();
+    return;
+  }
+
+  const authHeader = c.req.header('Authorization');
+  if (!authHeader) {
+    return c.json({ error: 'missing_authorization_header' as const }, 401);
+  }
+  if (!authHeader.startsWith('Bearer ')) {
+    return c.json({ error: 'invalid_authorization_format' as const }, 401);
+  }
+  const token = authHeader.slice(7);
+
+  try {
+    const decoded = jwt.verify(token, env.jwtSecret) as jwtDataShape;
+    if (typeof decoded.tgId !== 'number') {
+      return c.json({ error: 'invalid_token_payload' }, 401);
+    }
+
+    c.set('tgId', decoded.tgId);
+    await next();
+  } catch (error) {
+    return c.json({ error: 'invalid_token' }, 401);
   }
 });
 
