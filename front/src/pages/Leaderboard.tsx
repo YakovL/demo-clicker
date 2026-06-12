@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { useAuth } from '../api/auth'
 import { api } from '../api/api'
 import { useState, useEffect } from 'react'
+import { config } from '../../../back/users/model'
 
 type LeaderboardEntry = {
   rank: number
@@ -9,7 +10,6 @@ type LeaderboardEntry = {
   numberOfClicks: number
 }
 
-// TODO: handle the case when user is out of top-25
 export default function Leaderboard() {
   const { jwt, isLoading: isJwtLoading, error: jwtError } = useAuth()
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null)
@@ -82,11 +82,15 @@ export default function Leaderboard() {
           </thead>
           <tbody>
             {leaderboard.map((entry) => (
-              <tr key={entry.rank}>
-                <td>{entry.rank}</td>
-                <td>{entry.title}</td>
-                <td>{entry.numberOfClicks}</td>
-              </tr>
+              <>
+                {entry.rank > config.leaderboardSize + 1 &&
+                  <tr><td colSpan={3}>...</td></tr>}
+                <tr key={entry.rank}>
+                  <td>{entry.rank}</td>
+                  <td>{entry.title}</td>
+                  <td>{entry.numberOfClicks}</td>
+                </tr>
+              </>
             ))}
           </tbody>
         </table>
