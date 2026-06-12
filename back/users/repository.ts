@@ -1,15 +1,6 @@
 import { MongoClient, Db, Collection } from 'mongodb';
-import dotenv from 'dotenv';
 import type { User } from './model';
-import { config } from './model';
-
-dotenv.config();
-
-const MONGODB_CONNECT_URL = process.env.MONGODB_CONNECT_URL;
-if (!MONGODB_CONNECT_URL) {
-  throw new Error('MONGODB_CONNECT_URL environment variable is not set');
-}
-const mongoConnectUrl: string = MONGODB_CONNECT_URL;
+import { env, gameConfig } from '../config';
 
 const dbName = 'main'
 const userCollectionName = 'users'
@@ -87,7 +78,7 @@ async function connectToDatabase(): Promise<{ error: any }> {
 
   try {
     clientReadyPromise = (async () => {
-      client = new MongoClient(mongoConnectUrl, {
+      client = new MongoClient(env.MONGODB_CONNECT_URL, {
       });
       await client.connect();
       db = client.db(dbName);
@@ -161,7 +152,7 @@ export const usersRepository = {
         tgId,
         title,
         numberOfClicks: 0,
-        lastClickEnergy: config.maxEnergy,
+        lastClickEnergy: gameConfig.maxEnergy,
         lastClickTimestamp: new Date()
       };
 
@@ -182,7 +173,8 @@ export const usersRepository = {
 
   async addLegitimateClicks(tgId: number, claimedClicksCount: number): Promise<AddLegitimateClicksResult> {
     if (claimedClicksCount < 0
-        || claimedClicksCount > config.maxEnergy / config.clickEnergyCost * config.excessiveClicksTolerance
+        || claimedClicksCount > gameConfig.maxEnergy /
+          gameConfig.clickEnergyCost * gameConfig.excessiveClicksTolerance
         || claimedClicksCount % 1 != 0
     ) {
       return {
@@ -230,12 +222,12 @@ export const usersRepository = {
                               60000
                             ]
                           },
-                          config.energyRegenPerMinute
+                          gameConfig.energyRegenPerMinute
                         ]
                       }
                     ]
                   },
-                  config.maxEnergy
+                  gameConfig.maxEnergy
                 ]
               }
             }
@@ -247,7 +239,7 @@ export const usersRepository = {
                 $min: [
                   {
                     $floor: {
-                      $divide: ['$currentEnergy', config.clickEnergyCost]
+                      $divide: ['$currentEnergy', gameConfig.clickEnergyCost]
                     }
                   },
                   claimedClicksCount
@@ -266,7 +258,7 @@ export const usersRepository = {
               lastClickEnergy: {
                 $subtract: [
                   '$currentEnergy',
-                  { $multiply: ['$legitimateClicks', config.clickEnergyCost] }
+                  { $multiply: ['$legitimateClicks', gameConfig.clickEnergyCost] }
                 ]
               }
             }
@@ -370,7 +362,7 @@ export const usersRepository = {
       const leaderboard = await usersCollection
         .find()
         .sort(sorterWithTieBreaker)
-        .limit(config.leaderboardSize)
+        .limit(gameConfig.leaderboardSize)
         .toArray();
 
       const leaderboardWithRanks: LeaderboardUser[] = leaderboard.map((user, index) => ({

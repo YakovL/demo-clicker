@@ -1,14 +1,13 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { usersRepository } from './users/repository';
+import { env } from './config';
 
 type Env = {
   Variables: {
     tgId: number;
   };
 };
-
-const port = 3000;
 
 const app = new Hono<Env>();
 
@@ -68,6 +67,7 @@ app.post('/v1/me/clicks', async (c) => {
   return c.json(result.user);
 });
 
+const port = env.PORT;
 console.log(`Starting server on http://localhost:${port}`);
 serve({
   fetch: app.fetch,

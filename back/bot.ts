@@ -1,19 +1,8 @@
 import { Bot, InlineKeyboard } from 'grammy';
-import dotenv from 'dotenv';
 import { usersRepository } from './users/repository';
+import { env } from './config';
 
-// TODO: extract config to another file
-dotenv.config();
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const TELEGRAM_TMA_URL = process.env.TELEGRAM_TMA_URL;
-if (!TELEGRAM_BOT_TOKEN) {
-  throw new Error('TELEGRAM_BOT_TOKEN environment variable is not set');
-}
-if (!TELEGRAM_TMA_URL) {
-  throw new Error('TELEGRAM_TMA_URL environment variable is not set');
-}
-
-const bot = new Bot(TELEGRAM_BOT_TOKEN);
+const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
 bot.command('start', async (ctx) => {
   const user = ctx.from;
@@ -41,7 +30,7 @@ bot.command('start', async (ctx) => {
 
   await ctx.reply('Welcome! Press the button to open the clicker:', {
     reply_markup: new InlineKeyboard()
-      .webApp('Open Clicker', { url: TELEGRAM_TMA_URL })
+      .webApp('Open Clicker', { url: env.TELEGRAM_TMA_URL })
   });
 });
 
