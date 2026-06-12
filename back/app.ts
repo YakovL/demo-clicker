@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
+import { cors } from 'hono/cors';
 import { usersRepository } from './users/repository';
 import { env } from './config';
+import { validateWebAppData } from '@grammyjs/validator';
 
 type Env = {
   Variables: {
@@ -11,11 +13,41 @@ type Env = {
 
 const app = new Hono<Env>();
 
-// Auth middleware placeholder
-// TODO: substitute hardcode with actual TMA credential resolving
+app.use('*', cors());
+
+// Naive auth middleware - validates Telegram Mini App initData
+// TODO: add an endpoint for auth and issue a token instead (initData expires, etc)
 app.use('*', async (c, next) => {
-  c.set('tgId', 1234);
-  await next();
+  const initData = c.req.header('X-Telegram-Init-Data');
+  if (!initData) {
+    return c.json({ error: 'missing_init_data' as const }, 401);
+  }
+  if (typeof initData !== 'string') {
+    return c.json({ error: 'invalid_init_data_nonstring' as const }, 400);
+  }
+
+  const searchParams = new URLSearchParams(initData);
+  if (!validateWebAppData(env.TELEGRAM_BOT_TOKEN, searchParams)) {
+    return c.json({ error: 'invalid_signature' as const }, 401);
+  }
+
+  const userStr = searchParams.get('user');
+  if (!userStr) {
+    return c.json({ error: 'missing_user_in_init_data' as const }, 400);
+  }
+
+  try {
+    const user = JSON.parse(userStr);
+    const tgId = user.id;
+    if (typeof tgId !== 'number') {
+      return c.json({ error: 'invalid_user_id' }, 401);
+    }
+    
+    c.set('tgId', tgId);
+    await next();
+  } catch {
+    return c.json({ error: 'invalid_user_data' }, 401);
+  }
 });
 
 // GET /v1/me - returns User for the tgId
