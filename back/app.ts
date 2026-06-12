@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { usersRepository } from './users/repository';
 import { env } from './config';
 import { validateWebAppData } from '@grammyjs/validator';
+import { issueLogger } from './issueLogger';
 
 type Env = {
   Variables: {
@@ -91,7 +92,10 @@ app.get('/v1/me', async (c) => {
   const result = await usersRepository.findById(tgId);
 
   if (result.error) {
-    console.error(`Error handling ${c.req.method} ${c.req.path}:`, result.error, result.originalError);
+    issueLogger.log(
+      `${c.req.method} ${c.req.path} for ${tgId}`,
+      result.error,
+      result.originalError);
     return c.json({ error: 'internal_error' }, 500);
   }
 
@@ -123,7 +127,10 @@ app.post('/v1/me/clicks', async (c) => {
       return c.json({ error: 'invalid_claimed_clicks_count' }, 400);
     }
 
-    console.error(`Error handling ${c.req.method} ${c.req.path}:`, result.error, result.originalError);
+    issueLogger.log(
+      `${c.req.method} ${c.req.path} for ${tgId}, ${claimedClicksCount}`,
+      result.error,
+      result.originalError);
     return c.json({ error: 'internal_error' }, 500);
   }
   
@@ -140,7 +147,9 @@ app.get('/v1/leaderboard', async (c) => {
   const result = await usersRepository.getLeaderboard(tgId);
 
   if (result.error) {
-    console.error(`Error handling ${c.req.method} ${c.req.path}:`, result.error, result.originalError);
+    issueLogger.log(`${c.req.method} ${c.req.path} for ${tgId}`,
+      result.error,
+      result.originalError);
     return c.json({ error: 'internal_error' }, 500);
   }
 
@@ -159,7 +168,9 @@ app.get('/v1/me/rank', async (c) => {
   const result = await usersRepository.getRank(tgId);
   
   if (result.error) {
-    console.error(`Error handling ${c.req.method} ${c.req.path}:`, result.error, result.originalError);
+    issueLogger.log(`${c.req.method} ${c.req.path} for ${tgId}`,
+      result.error,
+      result.originalError);
     return c.json({ error: 'internal_error' }, 500);
   }
   

@@ -1,6 +1,7 @@
 import { Bot, InlineKeyboard } from 'grammy';
 import { usersRepository } from './users/repository';
 import { env } from './config';
+import { issueLogger } from './issueLogger';
 
 const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
@@ -13,7 +14,9 @@ bot.command('start', async (ctx) => {
   const findResult = await usersRepository.findById(tgId);
 
   if (findResult.error) {
-    console.error('Error finding user:', findResult.error, findResult.originalError);
+    issueLogger.log(`bot/start/findUser for ${tgId}`,
+      findResult.error,
+      findResult.originalError);
     await ctx.reply('Sorry, there was an error. Please try again later.');
     return;
   }
@@ -22,7 +25,9 @@ bot.command('start', async (ctx) => {
     const createResult = await usersRepository.create(tgId, title);
 
     if (createResult.error) {
-      console.error('Error creating user:', createResult.error, createResult.originalError);
+      issueLogger.log(`bot/start/createUser for ${tgId}`,
+        createResult.error,
+        createResult.originalError);
       await ctx.reply('Sorry, there was an error. Please try again later.');
       return;
     }
