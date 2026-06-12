@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '../api/auth'
 import { api } from '../api/api'
+import { config } from '../../../back/users/model'
 
 type UserData = {
   numberOfClicks: number
   lastClickEnergy: number
+  lastClickTimestamp: string
 }
 
 export default function Main() {
@@ -14,6 +16,7 @@ export default function Main() {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [isUserDataLoading, setIsUserDataLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentEnergy, setCurrentEnergy] = useState<number | null>(null)
 
   const loadMe = async () => {
     if (!jwt) return
@@ -40,6 +43,26 @@ export default function Main() {
       loadMe()
     }
   }, [jwt])
+
+  // Update energy in time (assuming no other client)
+  // TODO: learn if timezone/wrong clock @frontend may cause a bug and if it's worth fixing
+  useEffect(() => {
+    if (!userData) return
+
+    const updateEnergy = () => {
+      const now = new Date()
+      const lastClickDate = new Date(userData.lastClickTimestamp)
+      const elapsedMinutes = Math.floor((now.getTime() - lastClickDate.getTime()) / 60000)
+      const energyRegained = elapsedMinutes * config.energyRegenPerMinute
+      const calculatedEnergy = Math.min(config.maxEnergy, userData.lastClickEnergy + energyRegained)
+      setCurrentEnergy(calculatedEnergy)
+    }
+
+    updateEnergy()
+    const interval = setInterval(updateEnergy, 1000)
+
+    return () => clearInterval(interval)
+  }, [userData])
 
   if (isJwtLoading || isUserDataLoading) {
     return (
@@ -71,7 +94,7 @@ export default function Main() {
             Your rank: _ (<Link to="/leaderboard">Leaderboard</Link>)
           </p>
           <p>
-            Your energy: {userData?.lastClickEnergy ?? '_'}
+            Your energy: {currentEnergy ?? '_'}/{config.maxEnergy}
           </p>
           <p>
             Your clicks: {userData?.numberOfClicks ?? '_'}
