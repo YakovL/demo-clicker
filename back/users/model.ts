@@ -10,8 +10,10 @@ export const config = {
 export type User = {
   tgId: number;
   title: string;
-  // TODO: auth stuff
+  // no auth stuff since we're using jwt (to reduce the load on db)
   numberOfClicks: number;
   lastClickTimestamp: Date;
   lastClickEnergy: number;
+  // no idempotency / duplicate protection (lastClientSeq: number;)
+  // as long as duplicated legitimate requests are not a problem
 }
