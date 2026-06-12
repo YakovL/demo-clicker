@@ -134,9 +134,45 @@ app.post('/v1/me/clicks', async (c) => {
   return c.json(result.user);
 });
 
+// GET /v1/leaderboard - returns { rank, title, numberOfClicks }[]
+app.get('/v1/leaderboard', async (c) => {
+  const tgId = c.get('tgId');
+  const result = await usersRepository.getLeaderboard(tgId);
+
+  if (result.error) {
+    console.error(`Error handling ${c.req.method} ${c.req.path}:`, result.error, result.originalError);
+    return c.json({ error: 'internal_error' }, 500);
+  }
+
+  const leaderboard = result.leaderboard.map(({ rank, title, numberOfClicks }) => ({
+    rank,
+    title,
+    numberOfClicks
+  }));
+  
+  return c.json(leaderboard);
+});
+
+// GET /v1/me/rank - returns rank for the user
+app.get('/v1/me/rank', async (c) => {
+  const tgId = c.get('tgId');
+  const result = await usersRepository.getRank(tgId);
+  
+  if (result.error) {
+    console.error(`Error handling ${c.req.method} ${c.req.path}:`, result.error, result.originalError);
+    return c.json({ error: 'internal_error' }, 500);
+  }
+  
+  if (result.rank === null) {
+    return c.json({ error: 'user_not_found' }, 404);
+  }
+  
+  return c.json({ rank: result.rank });
+});
+
 const port = env.PORT;
 console.log(`Starting server on http://localhost:${port}`);
 serve({
   fetch: app.fetch,
-  port
+  port,
 });
