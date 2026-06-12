@@ -7,4 +7,8 @@ export const api = {
   getMe: (jwt: string) => client.v1.me.$get('', {
     headers: { Authorization: `Bearer ${jwt}` },
   }),
+
+  getLeaderboard: (jwt: string) => client.v1.leaderboard.$get('', {
+    headers: { Authorization: `Bearer ${jwt}` },
+  }),
 };
