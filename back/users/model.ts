@@ -14,6 +14,7 @@ export type RankBucket = {
   count: number;
 }
 
+// TODO: refactor – should use tgId as _id instead (and remove additional index)
 export type User = {
   tgId: number;
   title: string;
