@@ -681,6 +681,33 @@ export const usersRepository = {
   }
 };
 
+export async function ensureCollections(): Promise<{ error: null | unknown }> {
+  try {
+    const { error: connectionError } = await connectToDatabase();
+    if (connectionError) {
+      throw connectionError;
+    }
+    if (!db) {
+      throw new Error('db is falsy, must be a bug');
+    }
+
+    const existingCollections = await db.listCollections().toArray();
+    const existingCollectionNames = existingCollections.map(c => c.name);
+
+    if (!existingCollectionNames.includes(userCollectionName)) {
+      await db.createCollection(userCollectionName);
+    }
+    if (!existingCollectionNames.includes(rankBucketsCollectionName)) {
+      await db.createCollection(rankBucketsCollectionName);
+    }
+
+    return { error: null };
+  } catch (error: unknown) {
+    return { error };
+  }
+}
+
+// presumably not idempotent
 export async function ensureIndexes(): Promise<{ error: null | unknown }> {
   try {
     const { error: connectionError } = await connectToDatabase();
