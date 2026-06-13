@@ -26,7 +26,7 @@ const addClicksSchema = z.object({
 const app = new Hono<Env>()
   .use('*', cors())
 
-  // POST /v1/auth/telegram - validates initData and issues JWT
+  // validates initData and issues JWT
   .post('/v1/auth/telegram', async (c) => {
     const initData = c.req.header('X-Telegram-Init-Data');
     if (!initData) {
@@ -91,7 +91,7 @@ const app = new Hono<Env>()
     }
   })
 
-  // GET /v1/me - returns User for the tgId
+  // returns User
   .get('/v1/me', async (c) => {
     const tgId = c.get('tgId');
     const result = await usersRepository.findById(tgId);
@@ -111,7 +111,7 @@ const app = new Hono<Env>()
     return c.json(result.user);
   })
 
-  // POST /v1/me/clicks - adds legitimate clicks
+  // adds legitimate clicks
   .post('/v1/me/clicks', zValidator('json', addClicksSchema), async (c) => {
     const tgId = c.get('tgId');
     const body = c.req.valid('json');
@@ -138,7 +138,7 @@ const app = new Hono<Env>()
     return c.json(result.user);
   })
 
-  // GET /v1/leaderboard - returns { rank, title, numberOfClicks }[]
+  // returns { rank, title, numberOfClicks }[] (both top-n and user)
   .get('/v1/leaderboard', async (c) => {
     const tgId = c.get('tgId');
     const result = await usersRepository.getLeaderboardWithUser(tgId);
@@ -159,7 +159,7 @@ const app = new Hono<Env>()
     return c.json(leaderboard);
   })
 
-  // GET /v1/me/rank - returns user and their rank
+  // returns user and their rank
   .get('/v1/me/rank', async (c) => {
     const tgId = c.get('tgId');
     const result = await usersRepository.getRankAndUser(tgId);
