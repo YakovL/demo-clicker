@@ -11,13 +11,14 @@ type UserData = {
 }
 
 export default function Main() {
-  const [count, setCount] = useState(0)
   const { jwt, isLoading: isJwtLoading, error: jwtError } = useAuth()
   const [userData, setUserData] = useState<UserData | null>(null)
   const [isUserDataLoading, setIsUserDataLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentEnergy, setCurrentEnergy] = useState<number | null>(null)
   const [rank, setRank] = useState<number | null>(null)
+  const [isUserDataInSync, setIsUserDataInSync] = useState(true)
+  // TODO: resolve stale state
 
   const loadMe = async () => {
     if (!jwt) return
@@ -30,6 +31,7 @@ export default function Main() {
         const data = await res.json()
         setRank(data.rank)
         setUserData(data.user)
+        setIsUserDataInSync(true)
       } else {
         setError('Failed to load user data')
       }
@@ -37,6 +39,43 @@ export default function Main() {
       setError('Something went wrong')
     } finally {
       setIsUserDataLoading(false)
+    }
+  }
+
+  const claimAddClick = async () => {
+    if (!userData || !jwt || currentEnergy === null) return
+
+    if (currentEnergy < config.clickEnergyCost) {
+      return
+    }
+
+    // update optimistically
+    const optimisticUserData: UserData = {
+      numberOfClicks: userData.numberOfClicks + 1,
+      lastClickEnergy: currentEnergy - config.clickEnergyCost,
+      lastClickTimestamp: new Date().toISOString(),
+    }
+    setUserData(optimisticUserData)
+    setIsUserDataInSync(false)
+
+    // the sync with back (no rank updating yet to reduce the load)
+    try {
+      const res = await api.postClicksDebounced(1, jwt)
+      if (res.ok) {
+        const data = await res.json()
+        setUserData(data)
+        setIsUserDataInSync(true)
+
+        // TODO: notify user on discrepancy?
+        // if (data.numberOfClicks !== optimisticUserData.numberOfClicks) {
+        // }
+        // if (data.lastClickEnergy !== optimisticUserData.lastClickEnergy) {
+        // }
+      }
+      // TODO: else _
+      return res
+    } catch (err) {
+      // TODO: _
     }
   }
 
@@ -105,9 +144,9 @@ export default function Main() {
         <button
           type="button"
           className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          onClick={claimAddClick}
         >
-          Count is {count}
+          Click!
         </button>
       </section>
     </>
