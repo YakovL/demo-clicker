@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { cors } from 'hono/cors';
 import jwt from 'jsonwebtoken';
+import { zValidator } from '@hono/zod-validator';
+import { z } from 'zod';
 import { usersRepository } from './users/repository';
 import { env } from './config';
 import { validateWebAppData } from '@grammyjs/validator';
@@ -16,6 +18,10 @@ type Env = {
 type jwtDataShape = {
   tgId: number;
 }
+
+const addClicksSchema = z.object({
+  claimedClicksCount: z.number(),
+});
 
 const app = new Hono<Env>()
   .use('*', cors())
@@ -106,21 +112,13 @@ const app = new Hono<Env>()
   })
 
   // POST /v1/me/clicks - adds legitimate clicks
-  .post('/v1/me/clicks', async (c) => {
+  .post('/v1/me/clicks', zValidator('json', addClicksSchema), async (c) => {
     const tgId = c.get('tgId');
-    let claimedClicksCount: number;
-    try {
-      const body = await c.req.json<{ claimedClicksCount: number }>();
-      claimedClicksCount = body.claimedClicksCount;
-      if (typeof claimedClicksCount !== 'number') {
-        return c.json({ error: 'invalid_claimed_clicks_count' }, 400);
-      }
-    } catch {
-      return c.json({ error: 'invalid_json' }, 400);
-    }
+    const body = c.req.valid('json');
+    const claimedClicksCount = body.claimedClicksCount;
 
     const result = await usersRepository.addLegitimateClicks(tgId, claimedClicksCount);
-    
+
     if (result.error) {
       if (result.error === 'invalid_clicks_count') {
         return c.json({ error: 'invalid_claimed_clicks_count' }, 400);
@@ -132,11 +130,11 @@ const app = new Hono<Env>()
         result.originalError);
       return c.json({ error: 'internal_error' }, 500);
     }
-    
+
     if (!result.user) {
       return c.json({ error: 'user_not_found' }, 404);
     }
-    
+
     return c.json(result.user);
   })
 
