@@ -29,7 +29,9 @@ export const env = {
   MONGODB_CONNECT_URL,
   PORT,
   jwtSecret: TELEGRAM_BOT_TOKEN,
-  jwtExpiresIn: '7d', // may want to make adjustable in the future
+  // may want to make these adjustable in the future
+  jwtExpiresIn: '7d',
+  leaderboardCacheTtlMs: 1000,
 } as const;
 
 export { gameConfig };

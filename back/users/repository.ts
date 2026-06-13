@@ -96,6 +96,10 @@ async function connectToDatabase(): Promise<{ error: any }> {
   }
 }
 
+// cache for leaderboard
+let cachedLeaderboard: LeaderboardUser[] | null = null;
+let cacheTimestamp: number = 0;
+
 export const usersRepository = {
   async findById(tgId: number): Promise<FindUserResult> {
     const { error: connectionError } = await connectToDatabase();
@@ -341,7 +345,16 @@ export const usersRepository = {
     }
   },
 
-  async getLeaderboard(tgId: number): Promise<GetLeaderboardResult> {
+  async _getLeaderboard(): Promise<GetLeaderboardResult> {
+    const now = Date.now();
+
+    if (cachedLeaderboard && (now - cacheTimestamp) < env.leaderboardCacheTtlMs) {
+      return {
+        leaderboard: cachedLeaderboard,
+        error: null
+      };
+    }
+
     const { error: connectionError } = await connectToDatabase();
     if (connectionError) {
       return {
@@ -370,29 +383,8 @@ export const usersRepository = {
         rank: index + 1
       }));
 
-      const isUserInLeaderboard = leaderboard.some(u => u.tgId === tgId);
-
-      if (!isUserInLeaderboard) {
-        const rankResult = await this.getRank(tgId);
-        if (rankResult.error) {
-          return {
-            leaderboard: null,
-            error: rankResult.error,
-            originalError: rankResult.originalError
-          };
-        }
-        if (rankResult.rank === null) {
-          return {
-            leaderboard: null,
-            error: 'constraint_issue',
-            originalError: 'user not found, must be a bug'
-          };
-        }
-        leaderboardWithRanks.push({
-          ...rankResult.user,
-          rank: rankResult.rank
-        });
-      }
+      cachedLeaderboard = leaderboardWithRanks;
+      cacheTimestamp = now;
 
       return {
         leaderboard: leaderboardWithRanks,
@@ -405,6 +397,43 @@ export const usersRepository = {
         originalError: error
       };
     }
+  },
+
+  async getLeaderboardWithUser(tgId: number): Promise<GetLeaderboardResult> {
+    const leaderboardResult = await this._getLeaderboard();
+    if (leaderboardResult.error) {
+      return leaderboardResult;
+    }
+
+    const leaderboardWithRanks = leaderboardResult.leaderboard;
+    const isUserInLeaderboard = leaderboardWithRanks.some(u => u.tgId === tgId);
+
+    if (!isUserInLeaderboard) {
+      const rankResult = await this.getRankAndUser(tgId);
+      if (rankResult.error) {
+        return {
+          leaderboard: null,
+          error: rankResult.error,
+          originalError: rankResult.originalError
+        };
+      }
+      if (rankResult.rank === null) {
+        return {
+          leaderboard: null,
+          error: 'constraint_issue',
+          originalError: 'user not found, must be a bug'
+        };
+      }
+      leaderboardWithRanks.push({
+        ...rankResult.user,
+        rank: rankResult.rank
+      });
+    }
+
+    return {
+      leaderboard: leaderboardWithRanks,
+      error: null
+    };
   }
 };
 

@@ -141,7 +141,7 @@ const app = new Hono<Env>()
   // GET /v1/leaderboard - returns { rank, title, numberOfClicks }[]
   .get('/v1/leaderboard', async (c) => {
     const tgId = c.get('tgId');
-    const result = await usersRepository.getLeaderboard(tgId);
+    const result = await usersRepository.getLeaderboardWithUser(tgId);
 
     if (result.error) {
       issueLogger.log(`${c.req.method} ${c.req.path} for ${tgId}`,
