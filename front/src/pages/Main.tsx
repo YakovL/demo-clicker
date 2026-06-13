@@ -108,7 +108,7 @@ export default function Main() {
   if (isJwtLoading || isUserDataLoading) {
     return (
       <>
-        <section id="center">
+        <section className="screen">
           <p>Loading...</p>
         </section>
       </>
@@ -118,7 +118,7 @@ export default function Main() {
   if (jwtError || error) {
     return (
       <>
-        <section id="center">
+        <section className="screen">
           <p>Something went wrong</p>
           <button onClick={loadMe}>Retry</button>
         </section>
@@ -138,7 +138,7 @@ export default function Main() {
             Your energy: {currentEnergy ? Math.floor(currentEnergy) : '_'}/{config.maxEnergy}
           </p>
           <p>
-            Your clicks: {userData?.numberOfClicks ?? '_'}
+            Your clicks:
           </p>
           <div className="counter">
             {userData?.numberOfClicks ?? '_'}
