@@ -100,7 +100,7 @@ const app = new Hono<Env>()
       issueLogger.log(
         `${c.req.method} ${c.req.path} for ${tgId}`,
         result.error,
-        result.originalError);
+        'originalError' in result ? result.originalError : undefined);
       return c.json({ error: 'internal_error' }, 500);
     }
 
@@ -127,7 +127,7 @@ const app = new Hono<Env>()
       issueLogger.log(
         `${c.req.method} ${c.req.path} for ${tgId}, ${claimedClicksCount}`,
         result.error,
-        result.originalError);
+        'originalError' in result ? result.originalError : undefined);
       return c.json({ error: 'internal_error' }, 500);
     }
 
@@ -146,7 +146,7 @@ const app = new Hono<Env>()
     if (result.error) {
       issueLogger.log(`${c.req.method} ${c.req.path} for ${tgId}`,
         result.error,
-        result.originalError);
+        'originalError' in result ? result.originalError : undefined);
       return c.json({ error: 'internal_error' }, 500);
     }
 
@@ -167,7 +167,7 @@ const app = new Hono<Env>()
     if (result.error) {
       issueLogger.log(`${c.req.method} ${c.req.path} for ${tgId}`,
         result.error,
-        result.originalError);
+        'originalError' in result ? result.originalError : undefined);
       return c.json({ error: 'internal_error' }, 500);
     }
 
