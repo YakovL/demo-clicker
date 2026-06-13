@@ -5,6 +5,13 @@ export const config = {
 
   leaderboardSize: 25,
   excessiveClicksTolerance: 1.5,
+  bucketRange: 100,
+}
+
+export type RankBucket = {
+  // bucket for 200-299 should have _id: 3
+  _id: number;
+  count: number;
 }
 
 export type User = {

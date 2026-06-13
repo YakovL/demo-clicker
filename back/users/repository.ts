@@ -1,9 +1,10 @@
 import { MongoClient, Db, Collection } from 'mongodb';
-import type { User } from './model';
+import type { User, RankBucket } from './model';
 import { env, gameConfig } from '../config';
 
 const dbName = 'main'
 const userCollectionName = 'users'
+const rankBucketsCollectionName = 'rank_buckets'
 
 const sorterWithTieBreaker = { numberOfClicks: -1, _id: 1 } as const;
 
@@ -68,6 +69,7 @@ let client: MongoClient | null = null;
 let clientReadyPromise: Promise<MongoClient> | null = null;
 let db: Db | null = null;
 let usersCollection: Collection<User> | null = null;
+let rankBucketsCollection: Collection<RankBucket> | null = null;
 
 async function connectToDatabase(): Promise<{ error: any }> {
   if (client) return { error: null };
@@ -83,6 +85,7 @@ async function connectToDatabase(): Promise<{ error: any }> {
       await client.connect();
       db = client.db(dbName);
       usersCollection = db.collection<User>(userCollectionName);
+      rankBucketsCollection = db.collection<RankBucket>(rankBucketsCollectionName);
       return client;
     })();
     await clientReadyPromise;
@@ -91,6 +94,7 @@ async function connectToDatabase(): Promise<{ error: any }> {
     client = null;
     db = null;
     usersCollection = null;
+    rankBucketsCollection = null;
     clientReadyPromise = null;
     return { error };
   }
@@ -99,6 +103,173 @@ async function connectToDatabase(): Promise<{ error: any }> {
 // cache for leaderboard
 let cachedLeaderboard: LeaderboardUser[] | null = null;
 let cacheTimestamp: number = 0;
+
+// since methods are only used in usersRepository,
+// we don't attempt to connectToDatabase in each method unlike in usersRepository
+const rankBucketsRepository = {
+  getBucketIndex(clicks: number): number {
+    return Math.floor(clicks / gameConfig.bucketRange);
+  },
+
+  async getAllBucketsDescending(): Promise<{
+    buckets: RankBucket[];
+    error: null;
+    originalError: null;
+  } | {
+    buckets: null;
+    error: RepositoryError;
+    originalError: any;
+  }> {
+    if (!rankBucketsCollection) {
+      return {
+        buckets: null,
+        error: 'connection_problem',
+        originalError: 'rankBucketsCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const buckets = await rankBucketsCollection
+        .find({})
+        .sort({ _id: -1 })
+        .toArray();
+
+      return {
+        buckets,
+        error: null,
+        originalError: null
+      };
+    } catch (error) {
+      return {
+        buckets: null,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  },
+
+  async getBucket(bucketIndex: number): Promise<{
+    bucket: RankBucket | null;
+    error: null;
+    originalError: null;
+  } | {
+    bucket: null;
+    error: RepositoryError;
+    originalError: any;
+  }> {
+    if (!rankBucketsCollection) {
+      return {
+        bucket: null,
+        error: 'connection_problem',
+        originalError: 'rankBucketsCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const bucket = await rankBucketsCollection.findOne({ _id: bucketIndex });
+
+      return {
+        bucket,
+        error: null,
+        originalError: null
+      };
+    } catch (error) {
+      return {
+        bucket: null,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  },
+
+  async updateBucketCount(oldClicks: number, newClicks: number): Promise<{
+    success: true;
+    error: null;
+    originalError: null;
+  } | {
+    success: false;
+    error: RepositoryError;
+    originalError: any;
+  }> {
+    if (!rankBucketsCollection) {
+      return {
+        success: false,
+        error: 'connection_problem',
+        originalError: 'rankBucketsCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const oldBucketIndex = this.getBucketIndex(oldClicks);
+      const newBucketIndex = this.getBucketIndex(newClicks);
+
+      if (oldBucketIndex !== newBucketIndex) {
+        // Decrement old bucket count
+        await rankBucketsCollection.updateOne(
+          { _id: oldBucketIndex },
+          { $inc: { count: -1 } }
+        );
+        // Increment new bucket count
+        await rankBucketsCollection.updateOne(
+          { _id: newBucketIndex },
+          { $inc: { count: 1 } },
+          { upsert: true }
+        );
+      }
+
+      return {
+        success: true,
+        error: null,
+        originalError: null
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  },
+
+  async incrementBucketCount(clicks: number): Promise<{
+    success: true;
+    error: null;
+    originalError: null;
+  } | {
+    success: false;
+    error: RepositoryError;
+    originalError: any;
+  }> {
+    if (!rankBucketsCollection) {
+      return {
+        success: false,
+        error: 'connection_problem',
+        originalError: 'rankBucketsCollection is falsy, must be a bug'
+      };
+    }
+
+    try {
+      const bucketIndex = this.getBucketIndex(clicks);
+      await rankBucketsCollection.updateOne(
+        { _id: bucketIndex },
+        { $inc: { count: 1 } },
+        { upsert: true }
+      );
+
+      return {
+        success: true,
+        error: null,
+        originalError: null
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'database_error',
+        originalError: error
+      };
+    }
+  }
+};
 
 export const usersRepository = {
   async findById(tgId: number): Promise<FindUserResult> {
@@ -461,5 +632,6 @@ export async function closeConnection(): Promise<void> {
     client = null;
     db = null;
     usersCollection = null;
+    rankBucketsCollection = null;
   }
 }
