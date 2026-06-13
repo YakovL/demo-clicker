@@ -8,6 +8,10 @@ export const api = {
     headers: { Authorization: `Bearer ${jwt}` },
   }),
 
+  getMeWithRank: (jwt: string) => client.v1.me.rank.$get('', {
+    headers: { Authorization: `Bearer ${jwt}` },
+  }),
+
   getLeaderboard: (jwt: string) => client.v1.leaderboard.$get('', {
     headers: { Authorization: `Bearer ${jwt}` },
   }),

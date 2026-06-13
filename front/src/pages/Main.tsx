@@ -17,6 +17,7 @@ export default function Main() {
   const [isUserDataLoading, setIsUserDataLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentEnergy, setCurrentEnergy] = useState<number | null>(null)
+  const [rank, setRank] = useState<number | null>(null)
 
   const loadMe = async () => {
     if (!jwt) return
@@ -24,10 +25,11 @@ export default function Main() {
     setError(null)
 
     try {
-      const res = await api.getMe(jwt)
+      const res = await api.getMeWithRank(jwt)
       if (res.ok) {
         const data = await res.json()
-        setUserData(data)
+        setRank(data.rank)
+        setUserData(data.user)
       } else {
         setError('Failed to load user data')
       }
@@ -91,7 +93,7 @@ export default function Main() {
         <div>
           <h1>Click like a pro!</h1>
           <p>
-            Your rank: _ (<Link to="/leaderboard">Leaderboard</Link>)
+            Your rank: {rank ?? '_'} (<Link to="/leaderboard">Leaderboard</Link>)
           </p>
           <p>
             Your energy: {currentEnergy ?? '_'}/{config.maxEnergy}

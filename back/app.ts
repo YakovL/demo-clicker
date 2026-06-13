@@ -161,23 +161,26 @@ const app = new Hono<Env>()
     return c.json(leaderboard);
   })
 
-  // GET /v1/me/rank - returns rank for the user
+  // GET /v1/me/rank - returns user and their rank
   .get('/v1/me/rank', async (c) => {
     const tgId = c.get('tgId');
-    const result = await usersRepository.getRank(tgId);
-    
+    const result = await usersRepository.getRankAndUser(tgId);
+
     if (result.error) {
       issueLogger.log(`${c.req.method} ${c.req.path} for ${tgId}`,
         result.error,
         result.originalError);
       return c.json({ error: 'internal_error' }, 500);
     }
-    
+
     if (result.rank === null) {
       return c.json({ error: 'user_not_found' }, 404);
     }
-    
-    return c.json({ rank: result.rank });
+
+    return c.json({
+      rank: result.rank,
+      user: 'user' in result ? result.user : null,
+    });
   })
 ;
 

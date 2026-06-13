@@ -288,7 +288,7 @@ export const usersRepository = {
   },
 
   // currently using _id as a tie-breaker
-  async getRank(tgId: number): Promise<GetRankResult> {
+  async getRankAndUser(tgId: number): Promise<GetRankResult> {
     const { error: connectionError } = await connectToDatabase();
     if (connectionError) {
       return {
@@ -306,7 +306,7 @@ export const usersRepository = {
     }
 
     try {
-      const user = await usersCollection.findOne({ tgId }, { projection: { numberOfClicks: 1, _id: 1 } });
+      const user = await usersCollection.findOne({ tgId });
       if (!user) {
         return {
           rank: null,
