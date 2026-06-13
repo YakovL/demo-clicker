@@ -72,7 +72,7 @@ export default function Leaderboard() {
     <div className="screen">
       {header}
       {leaderboard && (
-        <table>
+        <table className="leaderboard">
           <thead>
             <tr>
               <th>Rank</th>
