@@ -203,6 +203,7 @@ const rankBucketsRepository = {
       const oldBucketIndex = this.getBucketIndex(oldClicks);
       const newBucketIndex = this.getBucketIndex(newClicks);
 
+      // not transactional: seems fine since buckets are a heuristic anyway
       if (oldBucketIndex !== newBucketIndex) {
         // Decrement old bucket count
         await rankBucketsCollection.updateOne(
@@ -333,6 +334,10 @@ export const usersRepository = {
 
       await usersCollection.insertOne(newUser);
 
+      // not transactional: seems fine since buckets are a heuristic anyway
+      // also no handling of bucketResult.error for that reason
+      const bucketResult = await rankBucketsRepository.incrementBucketCount(0);
+
       return {
         user: newUser,
         error: null
@@ -426,6 +431,7 @@ export const usersRepository = {
           // also update clicks number and timestamp
           {
             $set: {
+              prevNumberOfClicks: '$numberOfClicks',
               numberOfClicks: {
                 $add: ['$numberOfClicks', '$legitimateClicks']
               },
@@ -448,6 +454,14 @@ export const usersRepository = {
         ],
         { returnDocument: 'after' }
       );
+
+      if (result) {
+        const oldClicks = (result as any).prevNumberOfClicks as number;
+        const newClicks = result.numberOfClicks;
+        // not transactional: seems fine since buckets are a heuristic anyway
+        // also no handling of bucketResult.error for that reason
+        const bucketResult = await rankBucketsRepository.updateBucketCount(oldClicks, newClicks);
+      }
 
       return {
         user: result || null,
@@ -490,20 +504,78 @@ export const usersRepository = {
         };
       }
 
-      // not using sorterWithTieBreaker directly for better performance
-      const count = await usersCollection.countDocuments({
-        $or: [
-          { numberOfClicks: { $gt: user.numberOfClicks } },
-          {
-            numberOfClicks: user.numberOfClicks,
-            _id: { $lt: user._id }
-          }
-        ]
-      });
-      const rank = count + 1;
+      const userBucketIndex = rankBucketsRepository.getBucketIndex(user.numberOfClicks);
+
+      // Check if user is among top-leaderboardSize*2 by checking buckets from highest _id
+      const bucketsResult = await rankBucketsRepository.getAllBucketsDescending();
+      if (bucketsResult.error) {
+        return {
+          rank: null,
+          error: bucketsResult.error,
+          originalError: bucketsResult.originalError
+        };
+      }
+      const buckets = bucketsResult.buckets;
+
+      let accumulatedCount = 0;
+      let lowBucketIndex: number | null = null;
+      for (const bucket of buckets) {
+        accumulatedCount += bucket.count;
+        if (accumulatedCount >= gameConfig.leaderboardSize * 2) {
+          lowBucketIndex = bucket._id;
+          break;
+        }
+      }
+
+      // If user is in top bucket range, calculate rank as usual
+      if (lowBucketIndex !== null && user.numberOfClicks >= lowBucketIndex * gameConfig.bucketRange) {
+        const count = await usersCollection.countDocuments({
+          $or: [
+            { numberOfClicks: { $gt: user.numberOfClicks } },
+            {
+              numberOfClicks: user.numberOfClicks,
+              _id: { $lt: user._id }
+            }
+          ]
+        });
+        const rank = count + 1;
+
+        return {
+          rank,
+          user,
+          error: null
+        };
+      }
+
+      // Otherwise, use bucket approximation
+      // Calculate total count of buckets with higher _id
+      let totalCountHigherBuckets = 0;
+      for (const bucket of buckets) {
+        if (bucket._id > userBucketIndex) {
+          totalCountHigherBuckets += bucket.count;
+        }
+      }
+
+      // Get user's bucket count
+      const userBucketResult = await rankBucketsRepository.getBucket(userBucketIndex);
+      if (userBucketResult.error) {
+        return {
+          rank: null,
+          error: userBucketResult.error,
+          originalError: userBucketResult.originalError
+        };
+      }
+
+      // "|| 0" is an ok workaround if the bucket is missing
+      const userBucketCount = userBucketResult.bucket?.count || 0;
+
+      // Linear approximation within the bucket
+      const clicksIntoBucket = user.numberOfClicks - userBucketIndex * gameConfig.bucketRange;
+      const percentageIntoBucket = clicksIntoBucket / gameConfig.bucketRange;
+      const approximateRank = totalCountHigherBuckets + Math.floor(percentageIntoBucket * userBucketCount) + 1;
 
       return {
-        rank,
+        rank: approximateRank,
         user,
         error: null
       };
@@ -516,6 +588,7 @@ export const usersRepository = {
     }
   },
 
+  // uses cache
   async _getLeaderboard(): Promise<GetLeaderboardResult> {
     const now = Date.now();
 
