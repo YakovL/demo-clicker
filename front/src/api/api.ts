@@ -12,6 +12,13 @@ export const api = {
     headers: { Authorization: `Bearer ${jwt}` },
   }),
 
+  postClicks: (claimedClicksCount: number, jwt: string) =>
+    client.v1.me.clicks.$post({
+      json: { claimedClicksCount },
+    }, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    }),
+
   getLeaderboard: (jwt: string) => client.v1.leaderboard.$get('', {
     headers: { Authorization: `Bearer ${jwt}` },
   }),
