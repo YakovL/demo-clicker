@@ -140,14 +140,17 @@ export default function Main() {
           <p>
             Your clicks: {userData?.numberOfClicks ?? '_'}
           </p>
+          <div className="counter">
+            {userData?.numberOfClicks ?? '_'}
+          </div>
         </div>
         <button
           type="button"
-          className="counter"
+          className="counter-button"
           onClick={claimAddClick}
           disabled={currentEnergy < config.clickEnergyCost}
         >
-          Click!
+          More!
         </button>
       </section>
     </>
