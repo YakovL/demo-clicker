@@ -69,7 +69,7 @@ export default function Leaderboard() {
   }
 
   return (
-    <>
+    <div className="screen">
       {header}
       {leaderboard && (
         <table>
@@ -95,6 +95,6 @@ export default function Leaderboard() {
           </tbody>
         </table>
       )}
-    </>
+    </div>
   )
 }

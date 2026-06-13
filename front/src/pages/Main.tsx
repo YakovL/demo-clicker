@@ -128,7 +128,7 @@ export default function Main() {
 
   return (
     <>
-      <section id="center">
+      <section className="screen">
         <div>
           <h1>Click like a pro!</h1>
           <p>
