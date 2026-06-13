@@ -1,6 +1,7 @@
 .counter {
   font-size: 120px;
   padding: .4em;
+  color: var(--text-h);
 }
 
 .counter-button {
@@ -24,6 +25,12 @@
     border-color: var(--border);
     background: var(--code-bg);
   }
+}
+
+.encourage-message {
+  font-size: 24px;
+  color: var(--text-h);
+  transform: rotate(var(--tilt, 0deg));
 }
 
 .screen {

@@ -10,6 +10,36 @@ type UserData = {
   lastClickTimestamp: string
 }
 
+const encourageMessages = [
+  'yeah!',
+  'come on',
+  'awesome',
+  'now we\'re talkin',
+  'getting hot',
+  'you\'re killing it!',
+  'nice one!',
+  'that\'s the spirit!',
+  'way to go!',
+  'look at you go!',
+  'you got this!',
+  'keep the momentum!',
+  'on a roll!',
+  'boom!',
+  'making progress!',
+  'great pace!',
+  'that\'s more like it!',
+  'crushing it!',
+  'another one!',
+  'you\'re on fire!',
+  'sweet!',
+  'bingo!',
+  'nailed it!',
+  'solid',
+  'excellent!',
+  'keep going!',
+  'monster',
+]
+
 export default function Main() {
   const { jwt, isLoading: isJwtLoading, error: jwtError } = useAuth()
   const [userData, setUserData] = useState<UserData | null>(null)
@@ -19,6 +49,7 @@ export default function Main() {
   const [rank, setRank] = useState<number | null>(null)
   const [isUserDataInSync, setIsUserDataInSync] = useState(true)
   // TODO: resolve stale state
+  const [encourageMessage, setEncourageMessage] = useState('')
 
   const loadMe = async () => {
     if (!jwt) return
@@ -77,6 +108,17 @@ export default function Main() {
     } catch (err) {
       // TODO: _
     }
+  }
+
+  const clickHandler = async () => {
+    setEncourageMessage(encourageMessages[
+      Math.floor(Math.random() * encourageMessages.length)
+    ])
+    const tiltAngle = (Math.random() - 0.5) * 10;
+    (document.querySelector('.encourage-message') as HTMLElement)?.style
+      .setProperty('--tilt', `${tiltAngle}deg`);
+
+    await claimAddClick()
   }
 
   useEffect(() => {
@@ -147,11 +189,14 @@ export default function Main() {
         <button
           type="button"
           className="counter-button"
-          onClick={claimAddClick}
+          onClick={clickHandler}
           disabled={currentEnergy < config.clickEnergyCost}
         >
           More!
         </button>
+        <div className="encourage-message">
+          {encourageMessage || "\u00A0"}
+        </div>
       </section>
     </>
   )
