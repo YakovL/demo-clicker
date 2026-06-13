@@ -1,4 +1,4 @@
-// TODO: throttle to avoid problems on high load
+// TODO: throttle/use async logging/not stderr to avoid problems on high load
 export const issueLogger = {
   log: (context: string, errorType: string, fullError: any) => {
     const now = new Date();
