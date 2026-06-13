@@ -54,7 +54,7 @@ export default function Main() {
     const updateEnergy = () => {
       const now = new Date()
       const lastClickDate = new Date(userData.lastClickTimestamp)
-      const elapsedMinutes = Math.floor((now.getTime() - lastClickDate.getTime()) / 60000)
+      const elapsedMinutes = (now.getTime() - lastClickDate.getTime()) / 60000
       const energyRegained = elapsedMinutes * config.energyRegenPerMinute
       const calculatedEnergy = Math.min(config.maxEnergy, userData.lastClickEnergy + energyRegained)
       setCurrentEnergy(calculatedEnergy)
@@ -96,7 +96,7 @@ export default function Main() {
             Your rank: {rank ?? '_'} (<Link to="/leaderboard">Leaderboard</Link>)
           </p>
           <p>
-            Your energy: {currentEnergy ?? '_'}/{config.maxEnergy}
+            Your energy: {currentEnergy ? Math.floor(currentEnergy) : '_'}/{config.maxEnergy}
           </p>
           <p>
             Your clicks: {userData?.numberOfClicks ?? '_'}
