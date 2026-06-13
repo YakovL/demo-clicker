@@ -145,6 +145,7 @@ export default function Main() {
           type="button"
           className="counter"
           onClick={claimAddClick}
+          disabled={currentEnergy < config.clickEnergyCost}
         >
           Click!
         </button>
