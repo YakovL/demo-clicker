@@ -7,7 +7,7 @@ import './App.css'
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/clicker">
         <Routes>
           <Route path="/" element={<Main />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
