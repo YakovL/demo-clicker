@@ -26,7 +26,7 @@ export const api = {
     }),
 
   clickDebounceIntervalMs: 1000,
-  postClicksDebounced: (claimedClicksCount: number, jwt: string): ReturnType<typeof api.postClicks> => {
+  postClicksDebounced: (claimedClicksCount: number, jwt: string): ReturnType<typeof client.v1.me.clicks.$post> => {
     clickDebounceState.accumulatedClicks += claimedClicksCount;
 
     if (clickDebounceState.timeout) {
