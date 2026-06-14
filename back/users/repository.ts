@@ -335,8 +335,8 @@ export const usersRepository = {
       await usersCollection.insertOne(newUser);
 
       // not transactional: seems fine since buckets are a heuristic anyway
-      // also no handling of bucketResult.error for that reason
-      const bucketResult = await rankBucketsRepository.incrementBucketCount(0);
+      // also no handling of ↓ bucketResult.error for that reason
+      await rankBucketsRepository.incrementBucketCount(0);
 
       return {
         user: newUser,
@@ -459,8 +459,8 @@ export const usersRepository = {
         const oldClicks = (result as any).prevNumberOfClicks as number;
         const newClicks = result.numberOfClicks;
         // not transactional: seems fine since buckets are a heuristic anyway
-        // also no handling of bucketResult.error for that reason
-        const bucketResult = await rankBucketsRepository.updateBucketCount(oldClicks, newClicks);
+        // also no handling of ↓ bucketResult.error for that reason
+        await rankBucketsRepository.updateBucketCount(oldClicks, newClicks);
       }
 
       return {

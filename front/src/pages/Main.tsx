@@ -47,8 +47,9 @@ export default function Main() {
   const [error, setError] = useState<string | null>(null)
   const [currentEnergy, setCurrentEnergy] = useState<number | null>(null)
   const [rank, setRank] = useState<number | null>(null)
-  const [isUserDataInSync, setIsUserDataInSync] = useState(true)
   // TODO: resolve stale state
+  // @ts-expect-error - unused variable
+  const [isUserDataInSync, setIsUserDataInSync] = useState(true)
   const [encourageMessage, setEncourageMessage] = useState('')
 
   const loadMe = async () => {
