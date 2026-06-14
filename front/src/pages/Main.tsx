@@ -191,7 +191,7 @@ export default function Main() {
           type="button"
           className="counter-button"
           onClick={clickHandler}
-          disabled={currentEnergy < config.clickEnergyCost}
+          disabled={!currentEnergy || currentEnergy < config.clickEnergyCost}
         >
           More!
         </button>
