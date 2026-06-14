@@ -66,8 +66,8 @@ export default function Main() {
       } else {
         setError('Failed to load user data')
       }
-    } catch (err) {
-      setError('Something went wrong')
+    } catch (error) {
+      setError(String(error))
     } finally {
       setIsUserDataLoading(false)
     }
@@ -111,6 +111,7 @@ export default function Main() {
   }
 
   const clickHandler = async () => {
+    // show random encouraging message for better engagement
     setEncourageMessage(encourageMessages[
       Math.floor(Math.random() * encourageMessages.length)
     ])
