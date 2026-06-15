@@ -1,7 +1,25 @@
+.screen {
+  display: flex;
+  flex-direction: column;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+
+  padding: 32px 20px 24px;
+  gap: 18px;
+}
+
 .counter {
   font-size: 120px;
   padding: .4em;
   color: var(--text-h);
+}
+
+a {
+  color: inherit;
+  &:visited {
+    color: inherit;
+  }
 }
 
 .counter-button {
@@ -31,17 +49,6 @@
   font-size: 24px;
   color: var(--text-h);
   transform: rotate(var(--tilt, 0deg));
-}
-
-.screen {
-  display: flex;
-  flex-direction: column;
-  place-content: center;
-  place-items: center;
-  flex-grow: 1;
-
-  padding: 32px 20px 24px;
-  gap: 18px;
 }
 
 .leaderboard td {
