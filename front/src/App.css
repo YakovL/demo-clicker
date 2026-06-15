@@ -22,10 +22,13 @@ a {
   }
 }
 
-.counter-button {
-  font-size: 24px;
+button {
   padding: .3em .6em;
   border-radius: .3em;
+}
+
+.counter-button {
+  font-size: 24px;
   color: var(--accent);
   background: var(--accent-bg);
   border: 2px solid transparent;
