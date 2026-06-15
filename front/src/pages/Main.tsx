@@ -149,30 +149,18 @@ export default function Main() {
     return () => clearInterval(interval)
   }, [userData])
 
-  if (isJwtLoading || isUserDataLoading) {
-    return (
-      <>
-        <section className="screen">
-          <p>Loading...</p>
-        </section>
-      </>
-    )
-  }
-
-  if (jwtError || error) {
-    return (
-      <>
-        <section className="screen">
-          <p>Something went wrong</p>
-          <button onClick={loadMe}>Retry</button>
-        </section>
-      </>
-    )
-  }
-
   return (
-    <>
-      <section className="screen">
+    <section className="screen">
+      {isJwtLoading || isUserDataLoading ?
+      <p>Loading...</p> :
+
+      jwtError || error ?
+      <>
+        <p>Something went wrong</p>
+        <button onClick={loadMe}>Retry</button>
+      </> :
+
+      <>
         <div>
           <h1>Click like a pro!</h1>
           <p>
@@ -199,7 +187,8 @@ export default function Main() {
         <div className="encourage-message">
           {encourageMessage || "\u00A0"}
         </div>
-      </section>
-    </>
+      </>
+      }
+    </section>
   )
 }

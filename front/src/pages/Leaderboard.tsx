@@ -42,36 +42,21 @@ export default function Leaderboard() {
     }
   }, [jwt])
 
-  const header = (
-    <>
-      <Link to="/">Back to Main</Link>
-      <h1>Leaderboard</h1>
-    </>
-  )
-
-  if (isJwtLoading || isLoading) {
-    return (
-      <>
-        {header}
-        <p>Loading...</p>
-      </>
-    )
-  }
-
-  if (jwtError || error) {
-    return (
-      <>
-        {header}
-        <p>Something went wrong</p>
-        <button onClick={loadLeaderboard}>Retry</button>
-      </>
-    )
-  }
-
   return (
     <div className="screen">
-      {header}
-      {leaderboard && (
+      <Link to="/">Back to Main</Link>
+      <h1>Leaderboard</h1>
+
+      {isJwtLoading || isLoading ?
+      <p>Loading...</p> :
+
+      jwtError || error ?
+      <>
+        <p>Something went wrong</p>
+        <button onClick={loadLeaderboard}>Retry</button>
+      </> :
+
+      leaderboard && (
         <table className="leaderboard">
           <thead>
             <tr>
