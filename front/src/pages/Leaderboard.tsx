@@ -44,19 +44,22 @@ export default function Leaderboard() {
 
   return (
     <div className="screen">
-      <Link to="/">Back to Main</Link>
-      <h1>Leaderboard</h1>
+      <header>
+        <Link to="/">Back to Main</Link>
+        <h1>Leaderboard</h1>
+      </header>
 
       {isJwtLoading || isLoading ?
-      <p>Loading...</p> :
+      <p className="screen-content-center">Loading...</p> :
 
       jwtError || error ?
-      <>
+      <div className="screen-content-center">
         <p>Something went wrong</p>
         <button onClick={loadLeaderboard}>Retry</button>
-      </> :
+      </div> :
 
-      leaderboard && (
+      <div className="screen-content">
+      {leaderboard && (
         <table className="leaderboard">
           <thead>
             <tr>
@@ -80,6 +83,7 @@ export default function Leaderboard() {
           </tbody>
         </table>
       )}
+      </div>}
     </div>
   )
 }

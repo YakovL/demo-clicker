@@ -51,9 +51,12 @@
     + main: fonts, colors, spacing, message
     + leaderboard: fix retry button/layout
     + leaderboard: always show Back to main and header
-    - leaderboard: reduce spacing between Back to main and header
+    + leaderboard: reduce spacing between Back to main and header
+    + leaderboard: fix jumping on loading finish (align vertically to top, not center)
     * cool loading indicator?
     * main: progressbar for energy
+    * all buttons (effectively Retry ones for error states):
+      specify colors for border and bg, hover/active
 + review
 
 # Debt

@@ -9,6 +9,16 @@
   gap: 18px;
 }
 
+/* helpers for the pages with the header that's always shown,
+   meant not to jump during loading */
+.screen-content {
+  margin-bottom: auto;
+}
+.screen-content-center {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
 .counter {
   font-size: 120px;
   padding: .4em;
