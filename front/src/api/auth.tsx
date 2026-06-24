@@ -14,6 +14,18 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const isJwtExpired = (token: string): boolean => {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return true
+    const decoded = JSON.parse(atob(payload))
+    const now = Math.floor(Date.now() / 1000)
+    return decoded.exp < now
+  } catch {
+    return true
+  }
+}
+
 // TODO: share headers with back, use hono client
 // currently Telegram-only (TMA)
 // using localStorage as not expecting XSS in clicker
@@ -60,12 +72,18 @@ function useAuthInit() {
     }
   }, [])
 
+  // load saved jwt, reissue if expired
   useEffect(() => {
     if (jwt || isLoading) return
 
     const storedJwt = localStorage.getItem(JWT_STORAGE_KEY)
     if (storedJwt) {
-      setJwt(storedJwt)
+      if (isJwtExpired(storedJwt)) {
+        localStorage.removeItem(JWT_STORAGE_KEY)
+        reIssueJwt()
+      } else {
+        setJwt(storedJwt)
+      }
       return
     }
 

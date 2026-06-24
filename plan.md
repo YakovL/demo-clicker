@@ -8,6 +8,7 @@
   + transport: REST > WS .. + endpoints/schemas
     . no queue since users expect immediate feedback
   + FE logic (send batched with optimistic update; ..)
+    . localStorage is ok for jwt (no XSS expected)
 + design FE: 2 pages, main elements and user flows
 
 
@@ -72,6 +73,7 @@
   - claimAddClick@front: notify user on discrepancy? set UI into "stale" state?
     periodically refetch if stale? (!isUserDataInSync, after clickDebounceIntervalMs; rank refetching for top users?)
     show a note for user about optimistic updates?
+  - auth @front: also reissue jwt if API receives { error: 'invalid_token_payload' }, 401
   ..see other TODOs in Main.tsx
 - code consistency, DX:
   - "timestamp": use term consistently, substitute ISO strings with numbers (Unix ms)
