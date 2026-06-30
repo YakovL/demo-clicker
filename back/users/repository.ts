@@ -182,7 +182,7 @@ const rankBucketsRepository = {
     }
   },
 
-  async updateBucketCount(oldClicks: number, newClicks: number): Promise<{
+  async updateBucketCount(oldClicks: number, newClicks: number, session?: ClientSession): Promise<{
     success: true;
     error: null;
     originalError: null;
@@ -202,29 +202,56 @@ const rankBucketsRepository = {
       return successResult;
     }
 
-    if (!rankBucketsCollection || !client) {
+    if (!rankBucketsCollection) {
       return {
         success: false,
         error: 'connection_problem',
-        originalError: 'rankBucketsCollection or client is falsy, must be a bug'
+        originalError: 'rankBucketsCollection is falsy, must be a bug'
       };
     }
 
-    const session = client.startSession();
+    const performBucketUpdates = async (_session: ClientSession) => {
+      // Decrement old bucket count
+      await rankBucketsCollection.updateOne(
+        { _id: oldBucketIndex },
+        { $inc: { count: -1 } },
+        { session: _session }
+      );
+      // Increment new bucket count
+      await rankBucketsCollection.updateOne(
+        { _id: newBucketIndex },
+        { $inc: { count: 1 } },
+        { session: _session, upsert: true }
+      );
+    };
+
+    // If session provided, use it directly (external transaction)
+    if (session) {
+      try {
+        await performBucketUpdates(session);
+        return successResult;
+      } catch (error) {
+        return {
+          success: false,
+          error: 'database_error',
+          originalError: error
+        };
+      }
+    }
+
+    // Otherwise, manage own transaction
+    if (!client) {
+      return {
+        success: false,
+        error: 'connection_problem',
+        originalError: 'client is falsy, must be a bug'
+      };
+    }
+
+    const localSession = client.startSession();
     try {
-      await session.withTransaction(async () => {
-        // Decrement old bucket count
-        await rankBucketsCollection.updateOne(
-          { _id: oldBucketIndex },
-          { $inc: { count: -1 } },
-          { session }
-        );
-        // Increment new bucket count
-        await rankBucketsCollection.updateOne(
-          { _id: newBucketIndex },
-          { $inc: { count: 1 } },
-          { session, upsert: true }
-        );
+      await localSession.withTransaction(async () => {
+        await performBucketUpdates(localSession);
       });
 
       return successResult;
@@ -235,7 +262,7 @@ const rankBucketsRepository = {
         originalError: error
       };
     } finally {
-      await session.endSession();
+      await localSession.endSession();
     }
   },
 
@@ -385,96 +412,102 @@ export const usersRepository = {
         originalError: connectionError
       };
     }
-    if (!usersCollection) {
+    if (!usersCollection || !client) {
       return {
         user: null,
         error: 'connection_problem',
-        originalError: 'usersCollection is falsy, must be a bug'
+        originalError: 'usersCollection or client is falsy, must be a bug'
       };
     }
 
+    const session = client.startSession();
     try {
       const serverNow = new Date();
 
-      const result = await usersCollection.findOneAndUpdate(
-        { tgId },
-        [
-          // currentEnergy = min(lastClickEnergy + (serverNow - lastClickAt) * energyRegenPerMinute, maxEnergy)
-          {
-            $set: {
-              currentEnergy: {
-                $min: [
-                  {
-                    $add: [
-                      '$lastClickEnergy',
-                      {
-                        $multiply: [
-                          {
-                            $divide: [
-                              { $subtract: [serverNow, '$lastClickTimestamp'] },
-                              60000
-                            ]
-                          },
-                          gameConfig.energyRegenPerMinute
-                        ]
+      const result = await session.withTransaction(async () => {
+        const updateResult = await usersCollection.findOneAndUpdate(
+          { tgId },
+          [
+            // currentEnergy = min(lastClickEnergy + (serverNow - lastClickAt) * energyRegenPerMinute, maxEnergy)
+            {
+              $set: {
+                currentEnergy: {
+                  $min: [
+                    {
+                      $add: [
+                        '$lastClickEnergy',
+                        {
+                          $multiply: [
+                            {
+                              $divide: [
+                                { $subtract: [serverNow, '$lastClickTimestamp'] },
+                                60000
+                              ]
+                            },
+                            gameConfig.energyRegenPerMinute
+                          ]
+                        }
+                      ]
+                    },
+                    gameConfig.maxEnergy
+                  ]
+                }
+              }
+            },
+            // ligitimateClicks = min(currentEnergy / clickEnergyCost, claimedClicksCount)
+            {
+              $set: {
+                legitimateClicks: {
+                  $min: [
+                    {
+                      $floor: {
+                        $divide: ['$currentEnergy', gameConfig.clickEnergyCost]
                       }
-                    ]
-                  },
-                  gameConfig.maxEnergy
-                ]
+                    },
+                    claimedClicksCount
+                  ]
+                }
+              }
+            },
+            // newEnergy = currentEnergy - ligitimateClicks * clickEnergyCost
+            // also update clicks number and timestamp
+            {
+              $set: {
+                prevNumberOfClicks: '$numberOfClicks',
+                numberOfClicks: {
+                  $add: ['$numberOfClicks', '$legitimateClicks']
+                },
+                lastClickTimestamp: serverNow,
+                lastClickEnergy: {
+                  $subtract: [
+                    '$currentEnergy',
+                    { $multiply: ['$legitimateClicks', gameConfig.clickEnergyCost] }
+                  ]
+                }
+              }
+            },
+            // cleanup temp fields
+            {
+              $project: {
+                currentEnergy: 0,
+                legitimateClicks: 0
               }
             }
-          },
-          // ligitimateClicks = min(currentEnergy / clickEnergyCost, claimedClicksCount)
-          {
-            $set: {
-              legitimateClicks: {
-                $min: [
-                  {
-                    $floor: {
-                      $divide: ['$currentEnergy', gameConfig.clickEnergyCost]
-                    }
-                  },
-                  claimedClicksCount
-                ]
-              }
-            }
-          },
-          // newEnergy = currentEnergy - ligitimateClicks * clickEnergyCost
-          // also update clicks number and timestamp
-          {
-            $set: {
-              prevNumberOfClicks: '$numberOfClicks',
-              numberOfClicks: {
-                $add: ['$numberOfClicks', '$legitimateClicks']
-              },
-              lastClickTimestamp: serverNow,
-              lastClickEnergy: {
-                $subtract: [
-                  '$currentEnergy',
-                  { $multiply: ['$legitimateClicks', gameConfig.clickEnergyCost] }
-                ]
-              }
-            }
-          },
-          // cleanup temp fields
-          {
-            $project: {
-              currentEnergy: 0,
-              legitimateClicks: 0
-            }
-          }
-        ],
-        { returnDocument: 'after' }
-      );
+          ],
+          { returnDocument: 'after', session }
+        );
 
-      if (result) {
-        const oldClicks = (result as any).prevNumberOfClicks as number;
-        const newClicks = result.numberOfClicks;
-        // not transactional: seems fine since buckets are a heuristic anyway
-        // also no handling of ↓ bucketResult.error for that reason
-        await rankBucketsRepository.updateBucketCount(oldClicks, newClicks);
-      }
+        if (updateResult) {
+          const oldClicks = (updateResult as any).prevNumberOfClicks as number;
+          const newClicks = updateResult.numberOfClicks;
+          const bucketResult = await rankBucketsRepository.updateBucketCount(oldClicks, newClicks, session);
+          if (!bucketResult.success) {
+            throw bucketResult.originalError;
+          }
+        }
+
+        return updateResult;
+      });
 
       return {
         user: result || null,
@@ -486,6 +519,8 @@ export const usersRepository = {
         error: 'database_error',
         originalError: error
       };
+    } finally {
+      await session.endSession();
     }
   },
 

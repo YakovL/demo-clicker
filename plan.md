@@ -67,13 +67,12 @@
   * use _id instead of tgId in users, get rid of the extra index
   . connection pooling params (params of MongoClient): later during production, based on load testing
 - behavior consistency:
-  - buckets drifting: either make writes transactional (in usersRepository.addLegitimateClicks),
-    add re-indexing, or tolerate
+  - auth @front: also reissue jwt if API receives { error: 'invalid_token_payload' }, 401
   - optimistic energy regen @front: check if works correctly when clock @front differs from server
   - claimAddClick@front: notify user on discrepancy? set UI into "stale" state?
     periodically refetch if stale? (!isUserDataInSync, after clickDebounceIntervalMs; rank refetching for top users?)
     show a note for user about optimistic updates?
-  - auth @front: also reissue jwt if API receives { error: 'invalid_token_payload' }, 401
+  * buckets drifting: re-index (made transactional, so only handle existing drift)
   ..see other TODOs in Main.tsx
 - code consistency, DX:
   - "timestamp": use term consistently, substitute ISO strings with numbers (Unix ms)
