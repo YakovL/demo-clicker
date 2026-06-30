@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection } from 'mongodb';
+import { MongoClient, Db, Collection, ClientSession } from 'mongodb';
 import type { User, RankBucket } from './model';
 import { env, gameConfig } from '../config';
 
@@ -239,7 +239,7 @@ const rankBucketsRepository = {
     }
   },
 
-  async incrementBucketCount(clicks: number): Promise<{
+  async incrementBucketCount(clicks: number, session?: ClientSession): Promise<{
     success: true;
     error: null;
     originalError: null;
@@ -261,7 +261,7 @@ const rankBucketsRepository = {
       await rankBucketsCollection.updateOne(
         { _id: bucketIndex },
         { $inc: { count: 1 } },
-        { upsert: true }
+        session ? { session, upsert: true } : { upsert: true }
       );
 
       return {
@@ -322,14 +322,15 @@ export const usersRepository = {
         originalError: connectionError
       };
     }
-    if (!usersCollection) {
+    if (!usersCollection || !client) {
       return {
         user: null,
         error: 'connection_problem',
-        originalError: 'usersCollection is falsy, must be a bug'
+        originalError: 'usersCollection or client is falsy, must be a bug'
       };
     }
 
+    const session = client.startSession();
     try {
       const newUser: User = {
         tgId,
@@ -339,11 +340,14 @@ export const usersRepository = {
         lastClickTimestamp: new Date()
       };
 
-      await usersCollection.insertOne(newUser);
+      await session.withTransaction(async () => {
+        await usersCollection.insertOne(newUser, { session });
 
-      // not transactional: seems fine since buckets are a heuristic anyway
-      // also no handling of ↓ bucketResult.error for that reason
-      await rankBucketsRepository.incrementBucketCount(0);
+        const bucketResult = await rankBucketsRepository.incrementBucketCount(0, session);
+        if (!bucketResult.success) {
+          throw bucketResult.originalError;
+        }
+      });
 
       return {
         user: newUser,
@@ -355,6 +359,8 @@ export const usersRepository = {
         error: 'database_error',
         originalError: error
       };
+    } finally {
+      await session.endSession();
     }
   },
 
