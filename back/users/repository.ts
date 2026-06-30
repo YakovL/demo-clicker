@@ -191,44 +191,51 @@ const rankBucketsRepository = {
     error: RepositoryError;
     originalError: any;
   }> {
-    if (!rankBucketsCollection) {
+    const oldBucketIndex = this.getBucketIndex(oldClicks);
+    const newBucketIndex = this.getBucketIndex(newClicks);
+    const successResult = {
+      success: true,
+      error: null,
+      originalError: null
+    };
+    if (oldBucketIndex === newBucketIndex) {
+      return successResult;
+    }
+
+    if (!rankBucketsCollection || !client) {
       return {
         success: false,
         error: 'connection_problem',
-        originalError: 'rankBucketsCollection is falsy, must be a bug'
+        originalError: 'rankBucketsCollection or client is falsy, must be a bug'
       };
     }
 
+    const session = client.startSession();
     try {
-      const oldBucketIndex = this.getBucketIndex(oldClicks);
-      const newBucketIndex = this.getBucketIndex(newClicks);
-
-      // not transactional: seems fine since buckets are a heuristic anyway
-      if (oldBucketIndex !== newBucketIndex) {
+      await session.withTransaction(async () => {
         // Decrement old bucket count
         await rankBucketsCollection.updateOne(
           { _id: oldBucketIndex },
-          { $inc: { count: -1 } }
+          { $inc: { count: -1 } },
+          { session }
         );
         // Increment new bucket count
         await rankBucketsCollection.updateOne(
           { _id: newBucketIndex },
           { $inc: { count: 1 } },
-          { upsert: true }
+          { session, upsert: true }
         );
-      }
+      });
 
-      return {
-        success: true,
-        error: null,
-        originalError: null
-      };
+      return successResult;
     } catch (error) {
       return {
         success: false,
         error: 'database_error',
         originalError: error
       };
+    } finally {
+      await session.endSession();
     }
   },
 

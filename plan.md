@@ -67,8 +67,8 @@
   * use _id instead of tgId in users, get rid of the extra index
   . connection pooling params (params of MongoClient): later during production, based on load testing
 - behavior consistency:
-  - buckets drifting: either make writes transactional (in rankBucketsRepository.updateBucketCount,
-    usersRepository.create, .addLegitimateClicks), add re-indexing, or tolerate
+  - buckets drifting: either make writes transactional (in usersRepository.create,
+    .addLegitimateClicks), add re-indexing, or tolerate
   - optimistic energy regen @front: check if works correctly when clock @front differs from server
   - claimAddClick@front: notify user on discrepancy? set UI into "stale" state?
     periodically refetch if stale? (!isUserDataInSync, after clickDebounceIntervalMs; rank refetching for top users?)
